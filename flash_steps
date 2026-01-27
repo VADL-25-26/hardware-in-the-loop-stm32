@@ -1,0 +1,414 @@
+1) Compile application files
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -O0 \
+  -g \
+  -Wall \
+  -ffreestanding \
+  -nostdlib \
+  -Iinc \
+  -c src/main.c -o main.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -O0 \
+  -g \
+  -ffreestanding \
+  -nostdlib \
+  -c src/system_stm32h7xx.c -o system.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -O0 \
+  -g \
+  -ffreestanding \
+  -nostdlib \
+  -c src/system_stm32h7xx.c -o system.o
+
+2) Assemble startup
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -x assembler-with-cpp \
+  -c startup/startup_stm32h753xx.s -o startup.o
+
+3) Link
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -T ld/STM32H743ZITx_FLASH_DTCMRAM.ld \
+  -nostdlib \
+  -nostartfiles \
+  startup.o system.o syscalls.o main.o \
+  -o blinky.elf
+
+4) Convert to raw binary
+
+arm-none-eabi-objcopy -O binary blinky.elf blinky.bin
+
+5) Flash
+
+st-flash write blinky.bin 0x08000000
+
+
+---------------------------------------------------------
+
+
+CFLAGS="
+-mcpu=cortex-m7
+-mthumb
+-mfpu=fpv5-d16
+-mfloat-abi=hard
+-O0
+-g
+-ffunction-sections
+-fdata-sections
+-Wall
+-DSTM32H753xx
+"
+
+INCLUDES="
+-Iinc
+-Isrc
+-Irtos/include
+"
+
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/main.c -o build/main.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hardware.c -o build/hardware.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/system_stm32h7xx.c -o build/system.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/syscalls.c -o build/syscalls.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hil_tasks.c -o build/hil_tasks.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/usart3.c -o build/usart3.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/imu_state.c -o build/imu_state.o
+
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/tasks.c -o build/tasks.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/queue.c -o build/queue.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/list.c -o build/list.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/port.c -o build/port.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/timers.c -o build/timers.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/heap_4.c -o build/heap_4.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 -mthumb \
+  -c startup/startup_stm32h753xx.s \
+  -o build/startup.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 -mthumb \
+  -mthumb \
+  -mfpu=fpv5-d16 \
+  -mfloat-abi=hard \
+  build/main.o \
+  build/hardware.o \
+  build/tasks.o \
+  build/queue.o \
+  build/list.o \
+  build/port.o \
+  build/timers.o \
+  build/hil_tasks.o \
+  build/usart3.o \
+  build/imu_state.o \
+  build/heap_4.o \
+  build/system.o \
+  build/syscalls.o \
+  build/startup.o \
+  -Tld/STM32H743ZITx_FLASH_DTCMRAM.ld \
+  -Wl,--gc-sections \
+  -Wl,-Map=build/firmware.map \
+  -nostartfiles \
+  -o build/firmware.elf
+
+arm-none-eabi-objcopy \
+  -O binary \
+  build/firmware.elf \
+  build/firmware.bin
+
+st-flash write build/firmware.bin 0x08000000
+
+
+---------------------------------------------------------
+
+free up com port: lsof /dev/ttyACM0
+kill pid
+hexdump -C /dev/ttyACM0
+
+quit: Ctrl-A
+K
+Y
+
+1) Compile application files
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -O0 \
+  -g \
+  -Wall \
+  -ffreestanding \
+  -nostdlib \
+  -Iinc \
+  -c src/main.c -o main.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -O0 \
+  -g \
+  -ffreestanding \
+  -nostdlib \
+  -c src/system_stm32h7xx.c -o system.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -O0 \
+  -g \
+  -ffreestanding \
+  -nostdlib \
+  -c src/system_stm32h7xx.c -o system.o
+
+2) Assemble startup
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -x assembler-with-cpp \
+  -c startup/startup_stm32h753xx.s -o startup.o
+
+3) Link
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 \
+  -mthumb \
+  -T ld/STM32H743ZITx_FLASH_DTCMRAM.ld \
+  -nostdlib \
+  -nostartfiles \
+  startup.o system.o syscalls.o main.o \
+  -o blinky.elf
+
+4) Convert to raw binary
+
+arm-none-eabi-objcopy -O binary blinky.elf blinky.bin
+
+5) Flash
+
+st-flash write blinky.bin 0x08000000
+
+
+---------------------------------------------------------
+
+
+
+CFLAGS="
+-mcpu=cortex-m7
+-mthumb
+-mfpu=fpv5-d16
+-mfloat-abi=hard
+-O0
+-g
+-ffunction-sections
+-fdata-sections
+-Wall
+-DSTM32H753xx
+"
+
+INCLUDES="
+-Iinc
+-Iinc/hal
+-Isrc
+-Irtos/include
+"
+
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/main.c -o build/main.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hardware.c -o build/hardware.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/system_stm32h7xx.c -o build/system.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/syscalls.c -o build/syscalls.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hil_tasks.c -o build/hil_tasks.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/usart3.c -o build/usart3.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/imu_state.c -o build/imu_state.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/pwm_feedback.c -o build/pwm_feedback.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/tcp_transport.c -o build/tcp_transport.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/vn_crc.c -o build/vn_crc.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/vn_packet.c -o build/vn_packet.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/vn_to_imu.c -o build/vn_to_imu.o
+
+
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/tasks.c -o build/tasks.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/queue.c -o build/queue.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/list.c -o build/list.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/port.c -o build/port.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/timers.c -o build/timers.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/heap_4.c -o build/heap_4.o
+
+
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal.c -o build/stm32h7xx_hal.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_eth.c -o build/stm32h7xx_hal_eth.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_eth_ex.c -o build/stm32h7xx_hal_eth_ex.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_dma.c -o build/stm32h7xx_hal_dma.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_dma_ex.c -o build/stm32h7xx_hal_dma_ex.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_rcc.c -o build/stm32h7xx_hal_rcc.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_rcc_ex.c -o build/stm32h7xx_hal_rcc_ex.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_gpio.c -o build/stm32h7xx_hal_gpio.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_cortex.c -o build/stm32h7xx_hal_cortex.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_flash.c -o build/stm32h7xx_hal_flash.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hal/stm32h7xx_hal_flash_ex.c -o build/stm32h7xx_hal_flash_ex.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 -mthumb \
+  -c startup/startup_stm32h753xx.s \
+  -o build/startup.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 -mthumb \
+  -mthumb \
+  -mfpu=fpv5-d16 \
+  -mfloat-abi=hard \
+  build/main.o \
+  build/hardware.o \
+  build/tasks.o \
+  build/queue.o \
+  build/list.o \
+  build/port.o \
+  build/timers.o \
+  build/hil_tasks.o \
+  build/usart3.o \
+  build/imu_state.o \
+  build/pwm_feedback.o \
+  build/tcp_transport.o \
+  build/vn_crc.o \
+  build/vn_packet.o \
+  build/vn_to_imu.o \
+  build/stm32h7xx_hal.o \
+  build/stm32h7xx_hal_eth.o \
+  build/stm32h7xx_hal_eth_ex.o \
+  build/stm32h7xx_hal_dma.o \
+  build/stm32h7xx_hal_dma_ex.o \
+  build/stm32h7xx_hal_rcc.o \
+  build/stm32h7xx_hal_rcc_ex.o \
+  build/stm32h7xx_hal_gpio.o \
+  build/stm32h7xx_hal_cortex.o \
+  build/stm32h7xx_hal_flash.o \
+  build/stm32h7xx_hal_flash_ex.o \
+
+
+  build/heap_4.o \
+  build/system.o \
+  build/syscalls.o \
+  build/startup.o \
+  -Tld/STM32H743ZITx_FLASH_DTCMRAM.ld \
+  -Wl,--gc-sections \
+  -Wl,-Map=build/firmware.map \
+  -nostartfiles \
+  -o build/firmware.elf
+
+arm-none-eabi-objcopy \
+  -O binary \
+  build/firmware.elf \
+  build/firmware.bin
+
+st-flash write build/firmware.bin 0x08000000
+
+
+---------------------------------------------------------
+
+free up com port: lsof /dev/ttyACM0
+kill pid
+hexdump -C /dev/ttyACM0
+
+quit: Ctrl-A
+K
+Y
+
+----------------------------------------------------------
+
+no more tcp:
+
+
+CFLAGS="
+-mcpu=cortex-m7
+-mthumb
+-mfpu=fpv5-d16
+-mfloat-abi=hard
+-O0
+-g
+-ffunction-sections
+-fdata-sections
+-Wall
+-DSTM32H753xx
+"
+
+INCLUDES="
+-Iinc
+-Isrc
+-Irtos/include
+"
+
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/main.c -o build/main.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hardware.c -o build/hardware.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/system_stm32h7xx.c -o build/system.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/syscalls.c -o build/syscalls.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/hil_tasks.c -o build/hil_tasks.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/usart3_transport.c -o build/usart3_transport.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/imu_state.c -o build/imu_state.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/pwm_feedback.c -o build/pwm_feedback.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/vn_crc.c -o build/vn_crc.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/vn_packet.c -o build/vn_packet.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/vn_to_imu.c -o build/vn_to_imu.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c src/usart2.c -o build/usart2.o
+
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/tasks.c -o build/tasks.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/queue.c -o build/queue.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/list.c -o build/list.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/port.c -o build/port.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/timers.c -o build/timers.o
+arm-none-eabi-gcc $CFLAGS $INCLUDES -c rtos/heap_4.c -o build/heap_4.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 -mthumb \
+  -c startup/startup_stm32h753xx.s \
+  -o build/startup.o
+
+arm-none-eabi-gcc \
+  -mcpu=cortex-m7 -mthumb \
+  -mthumb \
+  -mfpu=fpv5-d16 \
+  -mfloat-abi=hard \
+  build/main.o \
+  build/hardware.o \
+  build/tasks.o \
+  build/queue.o \
+  build/list.o \
+  build/port.o \
+  build/timers.o \
+  build/hil_tasks.o \
+  build/usart3_transport.o \
+  build/imu_state.o \
+  build/pwm_feedback.o \
+  build/vn_crc.o \
+  build/vn_packet.o \
+  build/vn_to_imu.o \
+  build/usart2.o \
+  build/heap_4.o \
+  build/system.o \
+  build/syscalls.o \
+  build/startup.o \
+  -Tld/STM32H743ZITx_FLASH_DTCMRAM.ld \
+  -Wl,--gc-sections \
+  -Wl,-Map=build/firmware.map \
+  -nostartfiles \
+  --specs=nano.specs \
+  --specs=nosys.specs \
+  -o build/firmware.elf
+
+arm-none-eabi-objcopy \
+  -O binary \
+  build/firmware.elf \
+  build/firmware.bin
+
+st-flash write build/firmware.bin 0x08000000
