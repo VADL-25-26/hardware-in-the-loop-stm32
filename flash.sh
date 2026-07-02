@@ -1,16 +1,49 @@
 #!/usr/bin/env bash
 # flash.sh
 # Usage:
-#   ./flash.sh [device] [addr]
+#   ./flash.sh [device] [addr] [options]
 # Examples:
-#   ./flash.sh            -> uses /dev/ttyACM0 check and FLASH_ADDR from Makefile
+#   ./flash.sh                          -> /dev/ttyACM0, 0x08000000, verify on
 #   ./flash.sh /dev/ttyACM0 0x08000000
+#   ./flash.sh --no-verify
+#   ./flash.sh --reset
+#
+# Options:
+#   --no-verify   Skip post-write verification
+#   --reset       Reset the MCU after flashing (st-flash reset)
+#   --erase       Mass erase before writing
+#   -h, --help    Show this help
 
 set -euo pipefail
 
-DEVICE="${1:-/dev/ttyACM0}"
-FLASH_ADDR="${2:-0x08000000}"
+DEVICE="/dev/ttyACM0"
+FLASH_ADDR="0x08000000"
 BIN="./build/firmware.bin"
+VERIFY=1
+DO_RESET=0
+DO_ERASE=0
+
+usage() { grep '^#' "$0" | sed -n '2,15p' | sed 's/^# \{0,1\}//'; }
+
+# --- parse args (positional device/addr first, then flags anywhere) ---
+POSITIONAL=()
+for arg in "$@"; do
+  case "$arg" in
+    --no-verify) VERIFY=0 ;;
+    --reset)     DO_RESET=1 ;;
+    --erase)     DO_ERASE=1 ;;
+    -h|--help)   usage; exit 0 ;;
+    *)           POSITIONAL+=("$arg") ;;
+  esac
+done
+[ "${#POSITIONAL[@]}" -ge 1 ] && DEVICE="${POSITIONAL[0]}"
+[ "${#POSITIONAL[@]}" -ge 2 ] && FLASH_ADDR="${POSITIONAL[1]}"
+
+# --- sanity checks ---
+command -v st-flash >/dev/null 2>&1 || {
+  echo "st-flash not found. Install stlink-tools first." >&2
+  exit 1
+}
 
 if [ ! -f "$BIN" ]; then
   echo "Binary not found: $BIN"
@@ -18,7 +51,13 @@ if [ ! -f "$BIN" ]; then
   exit 1
 fi
 
-# try to free the device (if in use)
+# confirm a probe is actually attached before doing anything else
+if ! st-info --probe >/dev/null 2>&1; then
+  echo "No ST-Link probe detected. Check USB connection." >&2
+  exit 1
+fi
+
+# --- free the device if something's holding it open ---
 if lsof "$DEVICE" >/dev/null 2>&1; then
   echo "Device $DEVICE is in use. Listing PIDs:"
   lsof "$DEVICE"
@@ -26,12 +65,37 @@ if lsof "$DEVICE" >/dev/null 2>&1; then
   echo "Attempting to kill processes using $DEVICE..."
   PIDS=$(lsof -t "$DEVICE" || true)
   if [ -n "$PIDS" ]; then
-    echo "Killing: $PIDS"
-    kill $PIDS || echo "Failed to kill some processes. You may need sudo."
+    echo "Sending SIGTERM to: $PIDS"
+    kill $PIDS 2>/dev/null || true
     sleep 0.5
+    # escalate if still alive
+    STILL=$(lsof -t "$DEVICE" 2>/dev/null || true)
+    if [ -n "$STILL" ]; then
+      echo "Still alive, sending SIGKILL to: $STILL"
+      kill -9 $STILL 2>/dev/null || echo "Failed to kill some processes. You may need sudo."
+      sleep 0.5
+    fi
   fi
 fi
 
+# --- optional mass erase ---
+if [ "$DO_ERASE" -eq 1 ]; then
+  echo "Erasing flash..."
+  st-flash erase
+fi
+
+# --- flash ---
 echo "Flashing $BIN to $FLASH_ADDR using st-flash..."
-st-flash write "$BIN" "$FLASH_ADDR"
+if [ "$VERIFY" -eq 1 ]; then
+  st-flash --verify write "$BIN" "$FLASH_ADDR"
+else
+  st-flash write "$BIN" "$FLASH_ADDR"
+fi
+
+# --- optional reset ---
+if [ "$DO_RESET" -eq 1 ]; then
+  echo "Resetting target..."
+  st-flash reset
+fi
+
 echo "Done."
